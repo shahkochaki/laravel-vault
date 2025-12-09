@@ -64,6 +64,18 @@ VAULT_SECRET=database
 
 4. The package will attempt to read the configured secret and apply common DB keys (DB_PASSWORD, DB_USER, DB_HOST, DB_DATABASE) into runtime config.
 
+What's new in v1.1.1
+
+- Support for `token_file` in `config/vault.php`: point this to a local file containing a Vault token (e.g., Vault Agent sink or mounted secret) and the package will use it when `VAULT_TOKEN` is not set.
+- Improved error logging and handling for Vault HTTP responses.
+
+Config example (new option):
+
+```php
+'token' => env('VAULT_TOKEN', ''),
+'token_file' => env('VAULT_TOKEN_FILE', '/var/run/secrets/vault-token'),
+```
+
 Notes:
 
 - This package is lightweight and intended as a starting point; for production consider AppRole auth and Vault Agent.

@@ -71,6 +71,11 @@ class VaultService
                 'timeout' => $this->config['timeout'] ?? 5,
             ]);
             $body = json_decode((string) $res->getBody(), true);
+            $status = method_exists($res, 'getStatusCode') ? $res->getStatusCode() : null;
+            if ($status && $status >= 400) {
+                $this->log->warning("VaultService getSecret HTTP {$status} for {$requestPath}");
+                if ($status === 404) return null;
+            }
             if (isset($body['data']['data']) && is_array($body['data']['data'])) {
                 $data = $body['data']['data'];
             } elseif (isset($body['data']) && is_array($body['data'])) {
@@ -90,7 +95,25 @@ class VaultService
     {
         $headers = ['Accept' => 'application/json'];
         $token = $this->config['token'] ?? null;
-        if ($token) $headers['X-Vault-Token'] = $token;
+        // allow token to be provided via a token file (e.g. Vault Agent or mounted secret)
+        if (empty($token) && !empty($this->config['token_file'])) {
+            $file = $this->config['token_file'];
+            if (is_readable($file)) {
+                try {
+                    $content = trim((string) @file_get_contents($file));
+                    if ($content !== '') {
+                        $token = $content;
+                        $this->log->debug('VaultService: using token from token_file');
+                    }
+                } catch (\Throwable $e) {
+                    $this->log->warning('VaultService token_file read failed: ' . $e->getMessage());
+                }
+            }
+        }
+
+        if (!empty($token)) {
+            $headers['X-Vault-Token'] = $token;
+        }
         return $headers;
     }
 
