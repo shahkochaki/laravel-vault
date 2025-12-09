@@ -1,5 +1,3 @@
-echo $VAULT_ADDR
-
 # Laravel Vault
 
 [![Latest Version](https://img.shields.io/packagist/v/shahkochaki/laravel-vault.svg)](https://packagist.org/packages/shahkochaki/laravel-vault)
@@ -41,7 +39,17 @@ This creates `config/vault.php` in your application.
 Edit your `.env`:
 
 ```env
+# Option A: include port in the address
 VAULT_ADDR=https://vault.example.com:8200
+VAULT_TOKEN=your_vault_token_here
+VAULT_ENGINE=secret
+VAULT_PATH=app/production
+VAULT_SECRET=database
+
+# Option B: provide host and port separately
+# VAULT_ADDR may be scheme+host only; set VAULT_PORT to append when building the base URI
+VAULT_ADDR=https://vault.example.com
+VAULT_PORT=8200
 VAULT_TOKEN=your_vault_token_here
 VAULT_ENGINE=secret
 VAULT_PATH=app/production
@@ -142,7 +150,8 @@ $fresh = $vault->getSecret('app/production/database');
 return [
     'addr' => env('VAULT_ADDR', 'http://127.0.0.1:8200'),
     'token' => env('VAULT_TOKEN', ''),
-    'token_file' => env('VAULT_TOKEN_FILE', ''),
+  'token_file' => env('VAULT_TOKEN_FILE', ''),
+  'port' => env('VAULT_PORT', null),
     'engine' => env('VAULT_ENGINE', 'secret'),
     'path' => env('VAULT_PATH', ''),
     'timeout' => 5,
@@ -320,7 +329,7 @@ Then in Laravel Tinker:
 
 ## Changelog
 
-See `CHANGELOG.md` for release notes. Current: **1.1.1**
+See `CHANGELOG.md` for release notes. Current: **1.1.2**
 
 ---
 
