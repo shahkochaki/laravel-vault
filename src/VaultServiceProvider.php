@@ -22,6 +22,13 @@ class VaultServiceProvider extends ServiceProvider
             if ($addr !== '' && !preg_match('#^https?://#i', $addr)) {
                 $addr = 'http://' . $addr;
             }
+
+            // If a port is provided separately and the address doesn't already include one, append it
+            $port = $config['port'] ?? env('VAULT_PORT', null);
+            if ($port && !preg_match('#:\\d+(?:$|/)#', $addr)) {
+                $addr = rtrim($addr, '/') . ':' . $port;
+            }
+
             $base = rtrim($addr, '/');
 
             $client = new Client([
