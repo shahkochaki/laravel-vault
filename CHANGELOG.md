@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2025-12-09
+
+### Fixed
+
+- Improved address validation in `VaultServiceProvider::register()` to prevent port being added to empty addresses
+- Added `runningInConsole()` check in `VaultServiceProvider::boot()` to skip Vault fetching during artisan commands (config:cache, cache:clear, etc.)
+- Better handling of base_uri construction when address or port is missing
+
+### Changed
+
+- Refactored address construction logic for better reliability and validation
+
 ## [1.1.2] - 2025-12-09
 
 ### Added

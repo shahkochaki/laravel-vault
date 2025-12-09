@@ -19,14 +19,19 @@ class VaultServiceProvider extends ServiceProvider
             $config = $app['config']->get('vault', []);
             $rawAddr = $config['addr'] ?? env('VAULT_ADDR', '');
             $addr = trim((string) $rawAddr);
-            if ($addr !== '' && !preg_match('#^https?://#i', $addr)) {
-                $addr = 'http://' . $addr;
-            }
 
-            // If a port is provided separately and the address doesn't already include one, append it
-            $port = $config['port'] ?? env('VAULT_PORT', null);
-            if ($port && !preg_match('#:\\d+(?:$|/)#', $addr)) {
-                $addr = rtrim($addr, '/') . ':' . $port;
+            // Only proceed with address construction if we have a non-empty address
+            if ($addr !== '') {
+                // Add protocol if missing
+                if (!preg_match('#^https?://#i', $addr)) {
+                    $addr = 'http://' . $addr;
+                }
+
+                // If a port is provided separately and the address doesn't already include one, append it
+                $port = $config['port'] ?? env('VAULT_PORT', null);
+                if ($port && !preg_match('#:\\d+(?:$|/)#', $addr)) {
+                    $addr = rtrim($addr, '/') . ':' . $port;
+                }
             }
 
             $base = rtrim($addr, '/');
@@ -48,11 +53,15 @@ class VaultServiceProvider extends ServiceProvider
             __DIR__ . '/../config/vault.php' => config_path('vault.php'),
         ], 'config');
 
+        // Skip boot logic if already applied OR if running in console (artisan commands)
+        // This prevents issues with cache:clear, config:cache, etc.
+        if (self::$bootApplied || $this->app->runningInConsole()) {
+            return;
+        }
+
         try {
             $vault = $this->app->make(VaultService::class);
             if (!$vault) return;
-
-            if (self::$bootApplied) return;
 
             $config = $this->app['config']->get('vault', []);
             $path = $config['path'] ?? env('VAULT_PATH', '');
