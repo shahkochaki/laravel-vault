@@ -91,24 +91,28 @@ class VaultServiceProvider extends ServiceProvider
                 return;
             }
 
-            // Apply all secrets from Vault
-            $secretUpper = array_change_key_case($secret, CASE_UPPER);
             $updateEnv = $config['update_env'] ?? true;
             $updateConfig = $config['update_config'] ?? true;
 
-            // Get all env keys from .env file
-            $envKeys = $this->getEnvKeys();
+            // Step 1: Read .env file and find empty keys
+            $emptyEnvKeys = $this->getEmptyEnvKeys();
 
-            foreach ($secretUpper as $key => $value) {
-                // Check if this key exists in .env file
-                if (!in_array($key, $envKeys, true)) {
-                    continue;
-                }
+            if (empty($emptyEnvKeys)) {
+                Log::debug('VaultServiceProvider: No empty env keys found in .env file');
+                return;
+            }
 
-                // Check if the env variable is empty or not set
-                $envValue = env($key);
+            Log::debug('VaultServiceProvider: Found ' . count($emptyEnvKeys) . ' empty env keys: ' . implode(', ', $emptyEnvKeys));
 
-                if ($envValue === null || $envValue === '') {
+            // Step 2: Get secrets from Vault (case-insensitive)
+            $secretUpper = array_change_key_case($secret, CASE_UPPER);
+
+            // Step 3: For each empty env key, check if it exists in Vault
+            $appliedCount = 0;
+            foreach ($emptyEnvKeys as $key) {
+                if (isset($secretUpper[$key])) {
+                    $value = $secretUpper[$key];
+
                     // Apply to specific config paths based on key name (if enabled)
                     if ($updateConfig) {
                         $this->applySecretToConfig($key, $value);
@@ -121,9 +125,14 @@ class VaultServiceProvider extends ServiceProvider
                         $_SERVER[$key] = $value;
                     }
 
+                    $appliedCount++;
                     Log::debug("VaultServiceProvider: Applied {$key} from Vault (env: {$updateEnv}, config: {$updateConfig})");
+                } else {
+                    Log::debug("VaultServiceProvider: {$key} is empty in .env but not found in Vault");
                 }
             }
+
+            Log::info("VaultServiceProvider: Applied {$appliedCount} secrets from Vault to empty env variables");
 
             self::$bootApplied = true;
         } catch (\Throwable $e) {
@@ -132,11 +141,11 @@ class VaultServiceProvider extends ServiceProvider
     }
 
     /**
-     * Get all keys from .env file
+     * Get empty keys from .env file (keys that have no value or empty string)
      *
      * @return array
      */
-    private function getEnvKeys(): array
+    private function getEmptyEnvKeys(): array
     {
         $envPath = $this->app->environmentPath();
         $envFile = $this->app->environmentFile();
@@ -147,7 +156,7 @@ class VaultServiceProvider extends ServiceProvider
             return [];
         }
 
-        $keys = [];
+        $emptyKeys = [];
         $lines = file($fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
         foreach ($lines as $line) {
@@ -162,16 +171,20 @@ class VaultServiceProvider extends ServiceProvider
             if (strpos($line, '=') !== false) {
                 $parts = explode('=', $line, 2);
                 $key = trim($parts[0]);
+                $value = isset($parts[1]) ? trim($parts[1]) : '';
 
-                if ($key !== '') {
-                    $keys[] = strtoupper($key);
+                // Remove quotes if present
+                $value = trim($value, '"\'');
+
+                // If key exists but value is empty, add to list
+                if ($key !== '' && $value === '') {
+                    $emptyKeys[] = strtoupper($key);
                 }
             }
         }
 
-        return $keys;
+        return $emptyKeys;
     }
-
     /**
      * Apply a secret value to the appropriate config path
      *

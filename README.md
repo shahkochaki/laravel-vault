@@ -159,11 +159,11 @@ return [
     'path' => env('VAULT_PATH', ''),
     'timeout' => 5,
     'cache_ttl' => 300,
-    
+
     // Auto-update settings
     'update_env' => env('VAULT_UPDATE_ENV', true),
     'update_config' => env('VAULT_UPDATE_CONFIG', true),
-    
+
     // Custom config mappings (ENV_KEY => config.path)
     'config_mappings' => [
         // Example: 'MY_API_KEY' => 'services.myapi.key',
@@ -199,13 +199,16 @@ The package now automatically reads your `.env` file and syncs any empty environ
 
 ### How it works
 
-1. Package reads all keys from your `.env` file
-2. For each key that is empty or not set, it checks if that key exists in Vault
-3. If found in Vault, it updates the environment variable and/or Laravel config based on settings
+1. Package reads your `.env` file and finds all **empty** keys (keys with no value)
+2. Package fetches secrets from Vault at the configured path
+3. For each empty key, if it exists in Vault, the package updates the environment variable and/or Laravel config
+
+This approach gives you **full control** - only keys you define in `.env` (even if empty) will be synced from Vault.
 
 ### Example
 
 Your `.env` file:
+
 ```env
 APP_NAME=MyApp
 DB_HOST=
@@ -215,6 +218,7 @@ MY_API_KEY=
 ```
 
 Your Vault secret at `app/production/database`:
+
 ```json
 {
   "DB_HOST": "mysql.server.com",
@@ -225,10 +229,19 @@ Your Vault secret at `app/production/database`:
 }
 ```
 
-The package will:
-- ✅ Sync `DB_HOST`, `DB_PASSWORD`, `MAIL_PASSWORD`, `MY_API_KEY` (exist in .env)
-- ❌ Ignore `RANDOM_KEY` (not in .env)
-- ❌ Ignore `APP_NAME` (already has a value)
+**What happens:**
+
+1. Package finds empty keys in `.env`: `DB_HOST`, `DB_PASSWORD`, `MAIL_PASSWORD`, `MY_API_KEY`
+2. Package gets all secrets from Vault
+3. For each empty key, checks if it exists in Vault:
+   - ✅ `DB_HOST` → Found in Vault → Applied
+   - ✅ `DB_PASSWORD` → Found in Vault → Applied
+   - ✅ `MAIL_PASSWORD` → Found in Vault → Applied
+   - ✅ `MY_API_KEY` → Found in Vault → Applied
+4. Keys in Vault but not in `.env` are ignored:
+   - ❌ `RANDOM_KEY` → Not in `.env` → Ignored
+5. Keys with values are not touched:
+   - ❌ `APP_NAME` → Already has value → Not processed
 
 ### Control sync behavior
 
@@ -241,12 +254,14 @@ VAULT_UPDATE_CONFIG=true
 ```
 
 **Disable env updates, only update configs:**
+
 ```env
 VAULT_UPDATE_ENV=false
 VAULT_UPDATE_CONFIG=true
 ```
 
 **Disable both (read-only mode):**
+
 ```env
 VAULT_UPDATE_ENV=false
 VAULT_UPDATE_CONFIG=false
