@@ -219,17 +219,45 @@ VAULT_PATH=app/production
 
 ---
 
-## Auto-sync with .env file (New in v1.2.0)
+## 🔄 Dual Sync Modes (New in v1.3.3)
 
-The package now automatically reads your `.env` file and syncs any empty environment variables from Vault. This eliminates the need to manually specify which keys to fetch.
+The package supports **two sync modes** to fit different deployment environments:
 
-### How it works
+### 1️⃣ DOTENV Mode (Default)
+
+Perfect for traditional deployments with `.env` files.
+
+**How it works:**
 
 1. Package reads your `.env` file and finds all **empty** keys (keys with no value)
 2. Package fetches secrets from Vault at the configured path
 3. For each empty key, if it exists in Vault, the package updates the environment variable and/or Laravel config
 
 This approach gives you **full control** - only keys you define in `.env` (even if empty) will be synced from Vault.
+
+### 2️⃣ VAULT Mode (New!)
+
+Perfect for Docker, Kubernetes, and container environments where `.env` doesn't exist.
+
+**How it works:**
+
+1. Package fetches **all** secrets from Vault
+2. For each secret, checks if `env()` is empty or not set
+3. Only applies secrets that are missing or empty in the environment
+
+This is ideal when you set environment variables via `docker-compose.yml`, Kubernetes ConfigMaps, or orchestration tools.
+
+### Configuration
+
+Set the sync mode in your `.env` or `config/vault.php`:
+
+```env
+# DOTENV mode (default) - for traditional .env files
+VAULT_SYNC_MODE=env
+
+# VAULT mode - for Docker/Kubernetes environments
+VAULT_SYNC_MODE=vault
+```
 
 ### Example
 
@@ -468,7 +496,7 @@ Then in Laravel Tinker:
 
 ## Changelog
 
-See `CHANGELOG.md` for release notes. Current: **1.3.2**
+See `CHANGELOG.md` for release notes. Current: **1.3.3**
 
 ---
 

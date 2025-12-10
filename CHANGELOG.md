@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3] - 2025-12-10
+
+### Added
+
+- **🐳 Dual Sync Modes**: New `sync_mode` config option to support both traditional and container environments
+- **DOTENV Mode**: Reads `.env` file first, finds empty keys, then syncs from Vault (default behavior)
+- **VAULT Mode**: Reads Vault first, applies only to empty `env()` values - perfect for Docker/Kubernetes
+- Better support for containerized deployments where `.env` file doesn't exist
+
+### Changed
+
+- Refactored sync logic to support both modes seamlessly
+- Improved logging to show which sync mode is active
+- Enhanced documentation with Docker/Kubernetes examples
+
+### Configuration
+
+```env
+# Traditional .env based (default)
+VAULT_SYNC_MODE=dotenv
+
+# Docker/Container based (new!)
+VAULT_SYNC_MODE=vault
+```
+
 ## [1.3.2] - 2025-12-10
 
 ### Changed

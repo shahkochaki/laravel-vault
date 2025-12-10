@@ -101,40 +101,84 @@ class VaultServiceProvider extends ServiceProvider
 
             $updateEnv = $config['update_env'] ?? true;
             $updateConfig = $config['update_config'] ?? true;
+            $syncMode = $config['sync_mode'] ?? 'env';
 
-            // Step 1: Read .env file and find empty keys
-            $emptyEnvKeys = $this->getEmptyEnvKeys();
-
-            if (empty($emptyEnvKeys)) {
-                Log::debug('VaultServiceProvider: No empty env keys found in .env file');
-                return;
-            }
-
-            Log::debug('VaultServiceProvider: Found ' . count($emptyEnvKeys) . ' empty env keys: ' . implode(', ', $emptyEnvKeys));
-
-            // Step 2: Get secrets from Vault (case-insensitive)
+            // Get secrets from Vault (case-insensitive)
             $secretUpper = array_change_key_case($secret, CASE_UPPER);
 
-            // Step 3: Apply ALL secrets from Vault (not just empty env keys)
             $appliedCount = 0;
-            foreach ($secretUpper as $key => $value) {
-                // Apply to specific config paths based on key name (if enabled)
-                if ($updateConfig) {
-                    $this->applySecretToConfig($key, $value);
+
+            if ($syncMode === 'vault') {
+                // VAULT MODE: Read Vault first, apply only if env() is empty
+                // Perfect for Docker/container environments where .env doesn't exist
+                Log::debug('VaultServiceProvider: Using VAULT sync mode (for Docker/containers)');
+
+                foreach ($secretUpper as $key => $value) {
+                    // Check if env variable is empty or not set
+                    $envValue = env($key);
+
+                    if ($envValue === null || $envValue === '') {
+                        // Apply to specific config paths based on key name (if enabled)
+                        if ($updateConfig) {
+                            $this->applySecretToConfig($key, $value);
+                        }
+
+                        // Also set it as a runtime environment variable (if enabled)
+                        if ($updateEnv) {
+                            putenv("{$key}={$value}");
+                            $_ENV[$key] = $value;
+                            $_SERVER[$key] = $value;
+                        }
+
+                        $appliedCount++;
+                        Log::debug("VaultServiceProvider: Applied {$key} from Vault (was empty in environment)");
+                    } else {
+                        Log::debug("VaultServiceProvider: Skipped {$key} (already set in environment)");
+                    }
                 }
 
-                // Also set it as a runtime environment variable (if enabled)
-                if ($updateEnv) {
-                    putenv("{$key}={$value}");
-                    $_ENV[$key] = $value;
-                    $_SERVER[$key] = $value;
+                Log::info("VaultServiceProvider: Applied {$appliedCount} secrets from Vault (vault mode)");
+            } else {
+                // DOTENV MODE: Read .env file first, find empty keys, then sync from Vault
+                // Traditional mode for environments with .env file
+                Log::debug('VaultServiceProvider: Using DOTENV sync mode (traditional .env based)');
+
+                // Step 1: Read .env file and find empty keys
+                $emptyEnvKeys = $this->getEmptyEnvKeys();
+
+                if (empty($emptyEnvKeys)) {
+                    Log::debug('VaultServiceProvider: No empty env keys found in .env file');
+                    return;
                 }
 
-                $appliedCount++;
-                Log::debug("VaultServiceProvider: Applied {$key} from Vault (env: {$updateEnv}, config: {$updateConfig})");
+                Log::debug('VaultServiceProvider: Found ' . count($emptyEnvKeys) . ' empty env keys: ' . implode(', ', $emptyEnvKeys));
+
+                // Step 2: For each empty env key, check if it exists in Vault
+                foreach ($emptyEnvKeys as $key) {
+                    if (isset($secretUpper[$key])) {
+                        $value = $secretUpper[$key];
+
+                        // Apply to specific config paths based on key name (if enabled)
+                        if ($updateConfig) {
+                            $this->applySecretToConfig($key, $value);
+                        }
+
+                        // Also set it as a runtime environment variable (if enabled)
+                        if ($updateEnv) {
+                            putenv("{$key}={$value}");
+                            $_ENV[$key] = $value;
+                            $_SERVER[$key] = $value;
+                        }
+
+                        $appliedCount++;
+                        Log::debug("VaultServiceProvider: Applied {$key} from Vault (was empty in .env)");
+                    } else {
+                        Log::debug("VaultServiceProvider: {$key} is empty in .env but not found in Vault");
+                    }
+                }
+
+                Log::info("VaultServiceProvider: Applied {$appliedCount} secrets from Vault (env mode)");
             }
-
-            Log::info("VaultServiceProvider: Applied {$appliedCount} secrets from Vault to environment variables");
 
             self::$bootApplied = true;
         } catch (\Throwable $e) {
