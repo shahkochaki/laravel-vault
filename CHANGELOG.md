@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2025-12-10
+
+### Changed
+
+- 🎨 **Rebranded to laravel-vault-pro**: Repository renamed for better visibility and professional appearance
+- 📝 **Enhanced package description**: More compelling and feature-rich description highlighting all capabilities
+- 🏷️ **Expanded keywords**: Added comprehensive keywords for better discoverability (security, credentials, devops, kubernetes, etc.)
+- 🔗 **Updated all URLs**: Repository links updated throughout documentation
+- ✨ **Improved README**: More attractive presentation with emojis and better feature highlights
+
+### Notes
+
+- This is a branding and documentation improvement release
+- No breaking changes - fully backward compatible
+- GitHub automatically redirects from old URL to new one
+
 ## [1.2.2] - 2025-12-10
 
 ### Changed
