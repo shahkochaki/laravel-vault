@@ -93,7 +93,8 @@ class VaultServiceProvider extends ServiceProvider
                 return;
             }
 
-            $secret = $vault->getSecret($secretPath);
+            // Use readFromConfig() to ensure only config values are used (not runtime customizations)
+            $secret = $vault->readFromConfig($secretPath);
             if (!is_array($secret)) {
                 Log::debug('VaultServiceProvider: no secret found at ' . $secretPath);
                 return;

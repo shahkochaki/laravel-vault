@@ -169,6 +169,34 @@ class VaultService
     }
 
     /**
+     * Read data from Vault using ONLY config values (ignores runtime customizations).
+     * This method is used internally by VaultServiceProvider for auto-sync.
+     *
+     * @internal
+     * @param string $path The secret path
+     * @return array|null
+     */
+    public function readFromConfig(string $path): ?array
+    {
+        // Save current runtime settings
+        $savedEngine = $this->customEngine;
+        $savedPath = $this->customPath;
+
+        // Reset to config defaults
+        $this->customEngine = null;
+        $this->customPath = null;
+
+        try {
+            // Use read() which will now use config values only
+            return $this->read($path);
+        } finally {
+            // Restore runtime settings
+            $this->customEngine = $savedEngine;
+            $this->customPath = $savedPath;
+        }
+    }
+
+    /**
      * Alias for read() method for backward compatibility
      * @deprecated Use read() instead
      */

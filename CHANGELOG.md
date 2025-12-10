@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 - **📝 Method Renaming**: `getSecret()` renamed to `read()` for more generic API
   - `read(string $path)`: Read data from Vault (new primary method)
   - `getSecret(string $path)`: Kept as alias for backward compatibility
+- **🔒 Internal Method for Provider**: Added `readFromConfig()` method that ignores runtime customizations
+  - Ensures `VaultServiceProvider` auto-sync always uses config values
+  - Runtime engine/path settings don't affect automatic .env synchronization
 - Method chaining support for both engine and path configuration
 - Enhanced cache key generation to include custom path
 - Updated `clearCache()` to handle custom path scenarios
