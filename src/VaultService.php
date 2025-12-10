@@ -12,6 +12,7 @@ class VaultService
     protected CacheRepository $cache;
     protected LoggerInterface $log;
     protected array $config;
+    protected ?string $customEngine = null;
 
     public function __construct(Client $http, CacheRepository $cache, LoggerInterface $log, array $config = [])
     {
@@ -19,6 +20,39 @@ class VaultService
         $this->cache = $cache;
         $this->log = $log;
         $this->config = $config;
+    }
+
+    /**
+     * Set a custom engine for the next requests (overrides config)
+     *
+     * @param string $engine The engine name (e.g., 'secret', 'kv', 'custom-engine')
+     * @return self
+     */
+    public function setEngine(string $engine): self
+    {
+        $this->customEngine = $engine;
+        return $this;
+    }
+
+    /**
+     * Get the current engine (custom or from config)
+     *
+     * @return string
+     */
+    public function getEngine(): string
+    {
+        return $this->customEngine ?? ($this->config['engine'] ?? 'secret');
+    }
+
+    /**
+     * Reset engine to config default
+     *
+     * @return self
+     */
+    public function resetEngine(): self
+    {
+        $this->customEngine = null;
+        return $this;
     }
 
     protected function normalizeAddr(?string $rawAddr, $port = null): string
@@ -46,7 +80,8 @@ class VaultService
             return ltrim($p, '/');
         }
 
-        $engine = $this->config['engine'] ?? 'secret';
+        // Use custom engine if set, otherwise fall back to config
+        $engine = $this->getEngine();
         $engine = trim($engine, '/');
 
         // Assume KV v2 at engine path: /v1/{engine}/data/{path}
@@ -59,7 +94,8 @@ class VaultService
      */
     public function getSecret(string $path): ?array
     {
-        $cacheKey = 'vault_secret_' . md5($path . json_encode($this->config));
+        // Include custom engine in cache key if set
+        $cacheKey = 'vault_secret_' . md5($path . json_encode($this->config) . ($this->customEngine ?? ''));
         $ttl = $this->config['cache_ttl'] ?? 30;
         $cached = $this->cache->get($cacheKey);
         if (is_array($cached)) return $cached;
@@ -119,7 +155,13 @@ class VaultService
 
     public function clearCache(string $path): void
     {
+        // Clear cache for both default and custom engine
         $key = 'vault_secret_' . md5($path . json_encode($this->config));
         $this->cache->forget($key);
+        
+        if ($this->customEngine !== null) {
+            $keyCustom = 'vault_secret_' . md5($path . json_encode($this->config) . $this->customEngine);
+            $this->cache->forget($keyCustom);
+        }
     }
 }

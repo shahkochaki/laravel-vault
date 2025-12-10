@@ -256,6 +256,46 @@ $vault->clearCache('app/production/database');
 $fresh = $vault->getSecret('app/production/database');
 ```
 
+### Use custom engine (runtime)
+
+You can dynamically change the Vault engine at runtime without modifying config:
+
+```php
+use Shahkochaki\\Vault\\VaultService;
+
+$vault = app(VaultService::class);
+
+// Use default engine from config
+$secret1 = $vault->getSecret('path/to/secret');
+
+// Switch to a different engine
+$vault->setEngine('kv-v1');
+$secret2 = $vault->getSecret('path/to/secret');
+
+// Use another custom engine
+$vault->setEngine('custom-engine');
+$secret3 = $vault->getSecret('path/to/secret');
+
+// Reset back to config default
+$vault->resetEngine();
+$secret4 = $vault->getSecret('path/to/secret');
+
+// Chain methods
+$secret = $vault->setEngine('my-engine')->getSecret('my/path');
+```
+
+**Get current engine:**
+
+```php
+$currentEngine = $vault->getEngine(); // Returns current engine name
+```
+
+This is useful when:
+- You have multiple KV engines in Vault
+- Different secrets are stored in different engines
+- You need to switch between KV v1 and KV v2 engines
+- Working with custom secret engines
+
 ---
 
 ## Configuration (`config/vault.php`)
@@ -583,7 +623,7 @@ Then in Laravel Tinker:
 
 ## Changelog
 
-See `CHANGELOG.md` for release notes. Current: **1.3.3**
+See `CHANGELOG.md` for release notes. Current: **1.3.4**
 
 ---
 

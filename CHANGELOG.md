@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.4] - 2025-12-10
+
+### Added
+
+- **🔧 Runtime Engine Switching**: New methods to dynamically change Vault engine at runtime
+  - `setEngine(string $engine)`: Set a custom engine for subsequent requests
+  - `getEngine()`: Get the currently active engine
+  - `resetEngine()`: Reset back to config default engine
+- Method chaining support for fluent API usage
+- Enhanced cache key generation to include custom engine
+
+### Example
+
+```php
+// Switch engines dynamically
+$vault->setEngine('kv-v1')->getSecret('path');
+$vault->setEngine('custom-engine')->getSecret('another/path');
+$vault->resetEngine(); // Back to config default
+```
+
+### Use Cases
+
+- Multiple KV engines in same Vault instance
+- Switching between KV v1 and KV v2
+- Working with custom secret engines
+- Per-request engine configuration
+
 ## [1.3.3] - 2025-12-10
 
 ### Added
