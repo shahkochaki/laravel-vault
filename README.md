@@ -103,7 +103,7 @@ VAULT_SECRET=database
 #### Docker Compose Example
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -115,16 +115,16 @@ services:
       - VAULT_ENGINE=secret
       - VAULT_PATH=app/production
       - VAULT_SECRET=database
-      
+
       # Important: Use VAULT sync mode for Docker
       - VAULT_SYNC_MODE=vault
-      
+
       # Optional: Control what gets updated
       - VAULT_UPDATE_ENV=true
       - VAULT_UPDATE_CONFIG=true
     depends_on:
       - vault
-      
+
   vault:
     image: vault:latest
     ports:
@@ -143,7 +143,7 @@ data:
   VAULT_ENGINE: "secret"
   VAULT_PATH: "app/production"
   VAULT_SECRET: "database"
-  VAULT_SYNC_MODE: "vault"  # Important for Kubernetes!
+  VAULT_SYNC_MODE: "vault" # Important for Kubernetes!
 
 ---
 apiVersion: apps/v1
@@ -154,17 +154,17 @@ spec:
   template:
     spec:
       containers:
-      - name: app
-        image: your-laravel-app:latest
-        envFrom:
-        - configMapRef:
-            name: laravel-config
-        env:
-        - name: VAULT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: vault-token
-              key: token
+        - name: app
+          image: your-laravel-app:latest
+          envFrom:
+            - configMapRef:
+                name: laravel-config
+          env:
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vault-token
+                  key: token
 ```
 
 #### Why use `VAULT_SYNC_MODE=vault` for Docker?
@@ -176,6 +176,7 @@ spec:
 - ✅ Works seamlessly with CI/CD pipelines
 
 **How it works:**
+
 1. Your orchestrator (Docker/K8s) sets base environment variables
 2. Laravel Vault reads all secrets from Vault
 3. For each secret, it checks if `env()` is empty
