@@ -53,10 +53,18 @@ class VaultServiceProvider extends ServiceProvider
             __DIR__ . '/../config/vault.php' => config_path('vault.php'),
         ], 'config');
 
-        // Skip boot logic if already applied OR if running in console (artisan commands)
-        // This prevents issues with cache:clear, config:cache, etc.
-        if (self::$bootApplied || $this->app->runningInConsole()) {
+        // Skip boot logic if already applied
+        if (self::$bootApplied) {
             return;
+        }
+
+        // Skip only for specific console commands that shouldn't fetch secrets
+        if ($this->app->runningInConsole()) {
+            $command = $_SERVER['argv'][1] ?? '';
+            $skipCommands = ['config:cache', 'config:clear', 'cache:clear', 'route:cache', 'route:clear', 'view:cache', 'view:clear'];
+            if (in_array($command, $skipCommands)) {
+                return;
+            }
         }
 
         try {
@@ -107,32 +115,26 @@ class VaultServiceProvider extends ServiceProvider
             // Step 2: Get secrets from Vault (case-insensitive)
             $secretUpper = array_change_key_case($secret, CASE_UPPER);
 
-            // Step 3: For each empty env key, check if it exists in Vault
+            // Step 3: Apply ALL secrets from Vault (not just empty env keys)
             $appliedCount = 0;
-            foreach ($emptyEnvKeys as $key) {
-                if (isset($secretUpper[$key])) {
-                    $value = $secretUpper[$key];
-
-                    // Apply to specific config paths based on key name (if enabled)
-                    if ($updateConfig) {
-                        $this->applySecretToConfig($key, $value);
-                    }
-
-                    // Also set it as a runtime environment variable (if enabled)
-                    if ($updateEnv) {
-                        putenv("{$key}={$value}");
-                        $_ENV[$key] = $value;
-                        $_SERVER[$key] = $value;
-                    }
-
-                    $appliedCount++;
-                    Log::debug("VaultServiceProvider: Applied {$key} from Vault (env: {$updateEnv}, config: {$updateConfig})");
-                } else {
-                    Log::debug("VaultServiceProvider: {$key} is empty in .env but not found in Vault");
+            foreach ($secretUpper as $key => $value) {
+                // Apply to specific config paths based on key name (if enabled)
+                if ($updateConfig) {
+                    $this->applySecretToConfig($key, $value);
                 }
+
+                // Also set it as a runtime environment variable (if enabled)
+                if ($updateEnv) {
+                    putenv("{$key}={$value}");
+                    $_ENV[$key] = $value;
+                    $_SERVER[$key] = $value;
+                }
+
+                $appliedCount++;
+                Log::debug("VaultServiceProvider: Applied {$key} from Vault (env: {$updateEnv}, config: {$updateConfig})");
             }
 
-            Log::info("VaultServiceProvider: Applied {$appliedCount} secrets from Vault to empty env variables");
+            Log::info("VaultServiceProvider: Applied {$appliedCount} secrets from Vault to environment variables");
 
             self::$bootApplied = true;
         } catch (\Throwable $e) {

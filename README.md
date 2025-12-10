@@ -468,7 +468,7 @@ Then in Laravel Tinker:
 
 ## Changelog
 
-See `CHANGELOG.md` for release notes. Current: **1.3.1**
+See `CHANGELOG.md` for release notes. Current: **1.3.2**
 
 ---
 

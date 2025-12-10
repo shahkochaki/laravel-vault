@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2025-12-10
+
+### Changed
+
+- **Improved console command handling**: Now only skips specific cache/config commands instead of all console commands
+- **Apply all Vault secrets**: Changed behavior to apply ALL secrets from Vault (not just empty .env keys)
+- Better support for artisan commands and queues while maintaining security for cache operations
+
+### Fixed
+
+- Artisan commands like `tinker`, `queue:work`, and custom commands now work properly with Vault
+- More selective command filtering for better developer experience
+
 ## [1.3.1] - 2025-12-10
 
 ### Changed
