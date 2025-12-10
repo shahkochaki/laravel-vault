@@ -298,24 +298,38 @@ $secret5 = $vault->read('api/credentials');
 
 // Reset to config defaults
 $vault->resetEngine()->resetPath();
-$secret4 = $vault->getSecret('path/to/secret');
-
-// Chain methods
-$secret = $vault->setEngine('my-engine')->getSecret('my/path');
+$secret6 = $vault->read('path/to/secret');
 ```
 
-**Get current engine:**
+**Get current engine and path:**
 
 ```php
 $currentEngine = $vault->getEngine(); // Returns current engine name
+$currentPath = $vault->getPath();     // Returns current base path
 ```
 
-This is useful when:
+**Important Note:** 🔒
+
+Runtime customizations (`setEngine()`, `setPath()`) only affect **your manual API calls**. The automatic environment synchronization by `VaultServiceProvider` always uses the values from your `.env` file and `config/vault.php`, ensuring consistency and predictability.
+
+```php
+// In your controller or service
+$vault->setPath('custom/path')->read('secret'); // Uses custom path ✓
+
+// Meanwhile, VaultServiceProvider auto-sync
+// Still reads from VAULT_PATH in .env ✓
+// Your runtime changes don't affect it!
+```
+
+**Use cases:**
 
 - You have multiple KV engines in Vault
 - Different secrets are stored in different engines
 - You need to switch between KV v1 and KV v2 engines
 - Working with custom secret engines
+- Multi-environment configurations (dev/staging/production)
+- Per-tenant secret paths in SaaS applications
+- Namespace isolation for microservices
 
 ---
 
