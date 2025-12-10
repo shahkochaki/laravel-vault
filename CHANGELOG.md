@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2025-12-10
+
+### Fixed
+
+- **🔒 Provider Isolation**: Fixed `VaultServiceProvider` to use `readFromConfig()` method
+  - Ensures auto-sync always uses config values from `.env` and `config/vault.php`
+  - Runtime customizations (`setEngine()`, `setPath()`) no longer affect provider behavior
+  - Guarantees consistent and predictable environment synchronization
+
+### Documentation
+
+- Enhanced README with clear explanation of runtime customization isolation
+- Added examples showing provider behavior vs manual API calls
+- Clarified use cases for runtime engine and path configuration
+
 ## [1.4.0] - 2025-12-10
 
 ### Added
