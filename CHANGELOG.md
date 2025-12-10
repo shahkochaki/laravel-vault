@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2025-12-10
+
+### Added
+
+- **🎯 Runtime Path Configuration**: New methods to dynamically change base path at runtime
+  - `setPath(string $path)`: Set a custom base path for subsequent requests
+  - `getPath()`: Get the currently active base path
+  - `resetPath()`: Reset back to config default path
+- **📝 Method Renaming**: `getSecret()` renamed to `read()` for more generic API
+  - `read(string $path)`: Read data from Vault (new primary method)
+  - `getSecret(string $path)`: Kept as alias for backward compatibility
+- Method chaining support for both engine and path configuration
+- Enhanced cache key generation to include custom path
+- Updated `clearCache()` to handle custom path scenarios
+
+### Example
+
+```php
+// Set base path dynamically
+$vault->setPath('app/staging')->read('database');
+
+// Chain engine and path
+$vault->setEngine('secret')->setPath('app/production')->read('api/keys');
+
+// Use new read() method (recommended)
+$secret = $vault->read('path/to/data');
+
+// Old getSecret() still works (deprecated)
+$secret = $vault->getSecret('path/to/data');
+```
+
+### Use Cases
+
+- Multi-environment configurations (dev/staging/production)
+- Per-tenant secret paths in SaaS applications
+- Namespace isolation for microservices
+- Dynamic path switching based on context
+
 ## [1.3.4] - 2025-12-10
 
 ### Added

@@ -203,7 +203,7 @@ class ExampleController extends Controller
     public function index(VaultService $vault)
     {
         // Read secret from `app/production/database`
-        $secret = $vault->getSecret('app/production/database');
+        $secret = $vault->read('app/production/database');
 
         if ($secret) {
             echo 'DB user: ' . ($secret['DB_USER'] ?? 'N/A');
@@ -233,7 +233,7 @@ class PaymentService
 
     public function getApiCredentials(): array
     {
-        $credentials = $this->vault->getSecret('app/payment/stripe') ?? [];
+        $credentials = $this->vault->read('app/payment/stripe') ?? [];
         return [
             'api_key' => $credentials['STRIPE_KEY'] ?? null,
             'secret' => $credentials['STRIPE_SECRET'] ?? null,
@@ -246,38 +246,58 @@ class PaymentService
 
 ```php
 $vault = app(Shahkochaki\\Vault\\VaultService::class);
-$secret = $vault->getSecret('my/secret/path');
+$secret = $vault->read('my/secret/path');
 ```
 
 ### Clear cache for a secret
 
 ```php
 $vault->clearCache('app/production/database');
-$fresh = $vault->getSecret('app/production/database');
+$fresh = $vault->read('app/production/database');
 ```
 
-### Use custom engine (runtime)
+### Backward compatibility
 
-You can dynamically change the Vault engine at runtime without modifying config:
+The old `getSecret()` method is still available for backward compatibility:
+
+```php
+// Old method (still works)
+$secret = $vault->getSecret('app/production/database');
+
+// New method (recommended)
+$secret = $vault->read('app/production/database');
+```
+
+### Runtime engine and path configuration
+
+You can dynamically change the Vault engine and base path at runtime without modifying config:
 
 ```php
 use Shahkochaki\\Vault\\VaultService;
 
 $vault = app(VaultService::class);
 
-// Use default engine from config
-$secret1 = $vault->getSecret('path/to/secret');
+// Use default engine and path from config
+$secret1 = $vault->read('database');
 
 // Switch to a different engine
 $vault->setEngine('kv-v1');
-$secret2 = $vault->getSecret('path/to/secret');
+$secret2 = $vault->read('database');
 
 // Use another custom engine
 $vault->setEngine('custom-engine');
-$secret3 = $vault->getSecret('path/to/secret');
+$secret3 = $vault->read('database');
 
-// Reset back to config default
-$vault->resetEngine();
+// Change base path dynamically
+$vault->setPath('app/staging');
+$secret4 = $vault->read('database'); // Reads from app/staging/database
+
+// Chain methods for both engine and path
+$vault->setEngine('secret')->setPath('app/production');
+$secret5 = $vault->read('api/credentials');
+
+// Reset to config defaults
+$vault->resetEngine()->resetPath();
 $secret4 = $vault->getSecret('path/to/secret');
 
 // Chain methods
@@ -291,6 +311,7 @@ $currentEngine = $vault->getEngine(); // Returns current engine name
 ```
 
 This is useful when:
+
 - You have multiple KV engines in Vault
 - Different secrets are stored in different engines
 - You need to switch between KV v1 and KV v2 engines

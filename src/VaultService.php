@@ -13,6 +13,7 @@ class VaultService
     protected LoggerInterface $log;
     protected array $config;
     protected ?string $customEngine = null;
+    protected ?string $customPath = null;
 
     public function __construct(Client $http, CacheRepository $cache, LoggerInterface $log, array $config = [])
     {
@@ -55,6 +56,39 @@ class VaultService
         return $this;
     }
 
+    /**
+     * Set a custom base path for the next requests (overrides config)
+     *
+     * @param string $path The base path (e.g., 'app/production', 'my/custom/path')
+     * @return self
+     */
+    public function setPath(string $path): self
+    {
+        $this->customPath = $path;
+        return $this;
+    }
+
+    /**
+     * Get the current base path (custom or from config)
+     *
+     * @return string
+     */
+    public function getPath(): string
+    {
+        return $this->customPath ?? ($this->config['path'] ?? '');
+    }
+
+    /**
+     * Reset path to config default
+     *
+     * @return self
+     */
+    public function resetPath(): self
+    {
+        $this->customPath = null;
+        return $this;
+    }
+
     protected function normalizeAddr(?string $rawAddr, $port = null): string
     {
         $addr = trim((string) $rawAddr);
@@ -89,19 +123,26 @@ class VaultService
     }
 
     /**
-     * Read a Vault secret (supports KV v2 response shape).
-     * Returns associative array of secret data or null.
+     * Read data from Vault (supports KV v2 response shape).
+     * Returns associative array of data or null.
+     *
+     * @param string $path The secret path (relative to base path if set)
+     * @return array|null
      */
-    public function getSecret(string $path): ?array
+    public function read(string $path): ?array
     {
-        // Include custom engine in cache key if set
-        $cacheKey = 'vault_secret_' . md5($path . json_encode($this->config) . ($this->customEngine ?? ''));
+        // Build full path: basePath + path
+        $basePath = $this->getPath();
+        $fullPath = $basePath ? rtrim($basePath, '/') . '/' . ltrim($path, '/') : $path;
+
+        // Include custom engine and path in cache key if set
+        $cacheKey = 'vault_secret_' . md5($fullPath . json_encode($this->config) . ($this->customEngine ?? '') . ($this->customPath ?? ''));
         $ttl = $this->config['cache_ttl'] ?? 30;
         $cached = $this->cache->get($cacheKey);
         if (is_array($cached)) return $cached;
 
         try {
-            $requestPath = $this->buildRequestPath($path);
+            $requestPath = $this->buildRequestPath($fullPath);
             $res = $this->http->request('GET', $requestPath, [
                 'headers' => $this->buildHeaders(),
                 'timeout' => $this->config['timeout'] ?? 5,
@@ -109,7 +150,7 @@ class VaultService
             $body = json_decode((string) $res->getBody(), true);
             $status = method_exists($res, 'getStatusCode') ? $res->getStatusCode() : null;
             if ($status && $status >= 400) {
-                $this->log->warning("VaultService getSecret HTTP {$status} for {$requestPath}");
+                $this->log->warning("VaultService read HTTP {$status} for {$requestPath}");
                 if ($status === 404) return null;
             }
             if (isset($body['data']['data']) && is_array($body['data']['data'])) {
@@ -122,9 +163,18 @@ class VaultService
             $this->cache->put($cacheKey, $data, $ttl);
             return $data;
         } catch (\Throwable $e) {
-            $this->log->warning('VaultService getSecret failed: ' . $e->getMessage());
+            $this->log->warning('VaultService read failed: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Alias for read() method for backward compatibility
+     * @deprecated Use read() instead
+     */
+    public function getSecret(string $path): ?array
+    {
+        return $this->read($path);
     }
 
     protected function buildHeaders(): array
@@ -155,12 +205,16 @@ class VaultService
 
     public function clearCache(string $path): void
     {
-        // Clear cache for both default and custom engine
-        $key = 'vault_secret_' . md5($path . json_encode($this->config));
+        // Build full path like in read()
+        $basePath = $this->getPath();
+        $fullPath = $basePath ? rtrim($basePath, '/') . '/' . ltrim($path, '/') : $path;
+
+        // Clear cache for both default and custom engine/path
+        $key = 'vault_secret_' . md5($fullPath . json_encode($this->config));
         $this->cache->forget($key);
-        
-        if ($this->customEngine !== null) {
-            $keyCustom = 'vault_secret_' . md5($path . json_encode($this->config) . $this->customEngine);
+
+        if ($this->customEngine !== null || $this->customPath !== null) {
+            $keyCustom = 'vault_secret_' . md5($fullPath . json_encode($this->config) . ($this->customEngine ?? '') . ($this->customPath ?? ''));
             $this->cache->forget($keyCustom);
         }
     }
